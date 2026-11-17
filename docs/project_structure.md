@@ -4,11 +4,12 @@ gals/
 ├── assets/
 │   └── icon.ico
 ├── data/
-│   └── gals.db
+│   └── gals.db  # не загружается в git-репозиторий
 ├── docs/
 │   ├── architecture.md
 │   ├── project_passport.md
 │   ├── project_structure.md
+│   ├── prompts.md
 │   ├── readme.md
 │   └── roadmap.md
 ├── migrations/
@@ -62,7 +63,7 @@ gals/
 │   ├── preferences_repo.py
 │   ├── questionnaires_history_tab.py
 │   ├── questionnaires_mark_tab.py
-│   ├── questionnaires_repo.py
+│   ├── questions_repo.py
 │   ├── questionnaires_settings_tab.py
 │   ├── questionnaires_tab.py
 │   ├── regular_duties_repo.py
@@ -100,5 +101,7 @@ gals/
 │   ├── tests/
 │   │   └── gals.postman_collection.json
 │   └── index.html
+├── .gitattributes
+├── .gitignore
 ├── gals.pyw
 └── requirements.txt
