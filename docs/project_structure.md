@@ -5,7 +5,7 @@ gals/
 │   └── icon.ico
 ├── data/
 │   └── gals.db
-├── documents/
+├── docs/
 │   ├── architecture.md
 │   ├── project_passport.md
 │   ├── project_structure.md

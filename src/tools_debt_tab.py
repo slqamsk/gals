@@ -13,7 +13,7 @@ class ToolsDebtTab(tk.Frame):
 
         # Вычисляем путь к roadmap.md (он лежит в корне проекта, на уровень выше src)
         root_dir = Path(__file__).parent.parent
-        roadmap_path = root_dir / "roadmap.md"
+        roadmap_path = root_dir / "docs/roadmap.md"
 
         try:
             with open(roadmap_path, "r", encoding="utf-8") as f:

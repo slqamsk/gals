@@ -349,7 +349,7 @@ subsection("os.getcwd()")
 print(os.getcwd())
 
 subsection("os.listdir('.')  — только верхний уровень текущей папки")
-for name in sorted(os.listdir(".")):
+for name in sorted(os.listdir("..")):
     print(name)
 
 subsection("Наличие папок для рекурсивного сканирования")
@@ -362,7 +362,7 @@ files_to_check = []
 seen = set()
 
 # 1) файлы верхнего уровня текущей папки
-for name in sorted(os.listdir(".")):
+for name in sorted(os.listdir("..")):
     p = Path(name)
     if p.is_file():
         rel = str(p)
@@ -459,7 +459,7 @@ except Exception as e:
 section("10. REQUIREMENTS.TXT vs УСТАНОВЛЕННОЕ")
 
 subsection("requirements.txt vs importlib.metadata.distributions()")
-req = Path("requirements.txt")
+req = Path("../requirements.txt")
 if req.exists():
     required = [
         ln.strip()
