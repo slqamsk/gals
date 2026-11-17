@@ -1,0 +1,13 @@
+RewriteEngine On
+
+# Все запросы, кроме реально существующих файлов/папок,
+# перенаправляем в index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# CORS — не нужен, если index.html и api/ на одном домене (slqa.ru).
+# Оставлено на случай, если откроешь страницу с другого домена.
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Methods "GET, POST, DELETE, OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type, X-API-Key"

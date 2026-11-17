@@ -1,0 +1,459 @@
+{
+  "info": {
+    "_postman_id": "49b0316e-6bf4-4de2-8135-f1417ed0f08d",
+    "name": "gals",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "36497423"
+  },
+  "item": [
+    {
+      "name": "unauthorized (без ключа)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 401', function () {",
+              "    pm.response.to.have.status(401);",
+              "});",
+              "",
+              "pm.test('Error is unauthorized', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.error).to.eql('unauthorized');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://slqa.ru/z/api/events/",
+          "protocol": "https",
+          "host": ["slqa", "ru"],
+          "path": ["z", "api", "events", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "env protected (403)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 403', function () {",
+              "    pm.response.to.have.status(403);",
+              "});",
+              "",
+              "pm.test('Body does not contain DB_PASS', function () {",
+              "    const text = pm.response.text() || '';",
+              "    pm.expect(text).to.not.include('DB_PASS');",
+              "});",
+              "",
+              "pm.test('Body does not contain password-like value', function () {",
+              "    const text = pm.response.text() || '';",
+              "    pm.expect(text).to.not.match(/DB_PASS\\s*=/);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://slqa.ru/z/config/.env",
+          "protocol": "https",
+          "host": ["slqa", "ru"],
+          "path": ["z", "config", ".env"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "install (создать таблицу)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('action is created or exists', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(['created', 'exists']).to.include(json.action);",
+              "    pm.expect(json.table).to.eql('sleep_events');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-API-Key", "value": "test-key-12345", "type": "text" }
+        ],
+        "url": {
+          "raw": "https://slqa.ru/z/api/install",
+          "protocol": "https",
+          "host": ["slqa", "ru"],
+          "path": ["z", "api", "install"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "get (список событий)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Content-Type is JSON', function () {",
+              "    const ct = pm.response.headers.get('Content-Type') || '';",
+              "    pm.expect(ct).to.include('application/json');",
+              "});",
+              "",
+              "pm.test('Body is an array', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.be.an('array');",
+              "});",
+              "",
+              "pm.test('Each event has required fields', function () {",
+              "    const json = pm.response.json();",
+              "    json.forEach(function (item) {",
+              "        pm.expect(item).to.have.property('id');",
+              "        pm.expect(item).to.have.property('event_type');",
+              "        pm.expect(item.event_type).to.be.oneOf(['wake', 'sleep']);",
+              "        pm.expect(item).to.have.property('event_time');",
+              "    });",
+              "});",
+              "",
+              "pm.test('Response time < 2000ms', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "test-key-12345",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://slqa.ru/z/api/events/",
+          "protocol": "https",
+          "host": ["slqa", "ru"],
+          "path": ["z", "api", "events", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "post (создать событие)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('Response has numeric id', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.id).to.be.a('number');",
+              "});",
+              "",
+              "pm.test('event_type matches sent', function () {",
+              "    const sent = JSON.parse(pm.request.body.raw);",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.event_type).to.eql(sent.event_type);",
+              "});",
+              "",
+              "pm.test('event_time is valid date string', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(Number.isNaN(Date.parse(json.event_time))).to.be.false;",
+              "});",
+              "",
+              "pm.test('Save event id for later use', function () {",
+              "    const json = pm.response.json();",
+              "    if (json.id) {",
+              "        pm.collectionVariables.set('last_event_id', json.id);",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "test-key-12345",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"event_type\": \"wake\",\r\n    \"event_time\": \"2026-11-03T07:15:00Z\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://slqa.ru/z/api/events/",
+          "protocol": "https",
+          "host": ["slqa", "ru"],
+          "path": ["z", "api", "events", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "post invalid type (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error is invalid_body', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.error).to.eql('invalid_body');",
+              "});",
+              "",
+              "pm.test('Echoes received body', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.have.property('received');",
+              "    pm.expect(json.received.event_type).to.eql('fly');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "test-key-12345",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"event_type\": \"fly\",\r\n    \"event_time\": \"2026-11-03T07:15:00Z\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://slqa.ru/z/api/events/",
+          "protocol": "https",
+          "host": ["slqa", "ru"],
+          "path": ["z", "api", "events", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "post empty body (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error is invalid_body', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.error).to.eql('invalid_body');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "test-key-12345",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://slqa.ru/z/api/events/",
+          "protocol": "https",
+          "host": ["slqa", "ru"],
+          "path": ["z", "api", "events", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "delete (204)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 204', function () {",
+              "    pm.response.to.have.status(204);",
+              "});",
+              "",
+              "pm.test('Body is empty', function () {",
+              "    pm.expect(pm.response.text()).to.be.empty;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "test-key-12345",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://slqa.ru/z/api/events/{{last_event_id}}",
+          "protocol": "https",
+          "host": ["slqa", "ru"],
+          "path": ["z", "api", "events", "{{last_event_id}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "delete not found (404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 404', function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "",
+              "pm.test('Error is not_found', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.error).to.eql('not_found');",
+              "    pm.expect(json.id).to.eql(999999);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "test-key-12345",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://slqa.ru/z/api/events/999999",
+          "protocol": "https",
+          "host": ["slqa", "ru"],
+          "path": ["z", "api", "events", "999999"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "nonexistent path (404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 404', function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "",
+              "pm.test('Error is not_found', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.error).to.eql('not_found');",
+              "});",
+              "",
+              "pm.test('Echoes method and path', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.have.property('method');",
+              "    pm.expect(json).to.have.property('path');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "test-key-12345",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://slqa.ru/z/api/nonexistent",
+          "protocol": "https",
+          "host": ["slqa", "ru"],
+          "path": ["z", "api", "nonexistent"]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "last_event_id",
+      "value": "42"
+    }
+  ]
+}
