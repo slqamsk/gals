@@ -6,7 +6,6 @@
 *   **Главный принцип:** Система помогает достигать результатов, не требует обслуживания ради обслуживания. Учет ради учета запрещен.
 *   **Девиз на «Главной»:** «Меньше учёта — больше результата».
 *   **Развитие:** Agile-подход. От простого MVP к сложным механизмам. Отложенные задачи фиксируются в Техдолге.
-*   **Технологии:** Только Windows. Python 3.x, SQLite, Tkinter (включая `tksheet`, `tkcalendar`). Внешние библиотеки: `openpyxl` (Excel), `dateutil` (время), `requests` (синхронизация с веб-API).
 
 ## 2. Терминология и слои
 
@@ -44,10 +43,10 @@
 ## 3. Архитектура БД (SQLite)
 
 * **Миграции:** Строгие `.sql` файлы (001, 002 и т.д.). Применяются по `PRAGMA user_version`. Каждая миграция выполняется **атомарно**: один скрипт = одна транзакция вместе с `PRAGMA user_version`, падение в середине откатывает её целиком и не сдвигает версию. На время применения внешние ключи выключаются на соединении (внутри транзакции `PRAGMA foreign_keys` не работает) и включаются обратно после. **Автобэкапа нет** — копию `../data/gals.db` перед новыми миграциями пользователь делает сам.
-*   **Защита данных:** Везде используется `ON DELETE RESTRICT` (запрет удаления родителя, если есть зависимые данные). Единственное исключение — `measurement_values.measurement_session_id`: `ON DELETE CASCADE` (значение без сеанса бессмысленно). Индикатор или вопрос с историей значений удалить нельзя — это осознанное поведение, архивации пока нет.
-*   **Ленивое создание:** Периоды создаются только в момент появления активности или ручного пересчета.
-*   **Минутная точность (MVP):** `start_time`/`end_time`/`created_at`/`measured_at` сохраняются с точностью до минуты. Секунды обнуляются в коде (`datetime_utils.to_minute_iso`) на границе записи в БД (`ActivitiesRepository.add/update`, `MeasurementsRepository.add_session/update_session`, `QuestionsRepository.add_answers_batch/update_answer`).
-*   **Длительности — только введённое:** `duration`, `clean_duration`, `breaks_duration`, `engagement_percentage` хранятся, только если пользователь ввёл значение вручную; иначе NULL (DEFAULT в схеме есть, но репозитории всегда передают значения явно). В математике эти поля не участвуют — `calc_duration` считает `end − start`. В UI пустое значение показывается пустым, а не нулём. Отдельный алгоритм, учитывающий и введённую длительность, и время, — в IMP-08.
+* **Защита данных:** Везде используется `ON DELETE RESTRICT` (запрет удаления родителя, если есть зависимые данные). Единственное исключение — `measurement_values.measurement_session_id`: `ON DELETE CASCADE` (значение без сеанса бессмысленно). Индикатор или вопрос с историей значений удалить нельзя — это осознанное поведение, архивации пока нет.
+* **Ленивое создание:** Периоды создаются только в момент появления активности или ручного пересчета.
+* **Минутная точность (MVP):** `start_time`/`end_time`/`created_at`/`measured_at` сохраняются с точностью до минуты. Секунды обнуляются в коде (`datetime_utils.to_minute_iso`) на границе записи в БД (`ActivitiesRepository.add/update`, `MeasurementsRepository.add_session/update_session`, `QuestionsRepository.add_answers_batch/update_answer`).
+* **Длительности — только введённое:** `duration`, `clean_duration`, `breaks_duration`, `engagement_percentage` хранятся, только если пользователь ввёл значение вручную; иначе NULL (DEFAULT в схеме есть, но репозитории всегда передают значения явно). В математике эти поля не участвуют — `calc_duration` считает `end − start`. В UI пустое значение показывается пустым, а не нулём. Отдельный алгоритм, учитывающий и введённую длительность, и время, — в IMP-08.
 
 ### Основные таблицы:
 *   `preferences` — настройки приложения (key-value в JSON).
@@ -288,3 +287,102 @@
 *   **Секреты серверной части:** `.env` (вне публичной папки, защищён `.htaccess`), `env_loader.php`.
 *   **Обязательные настройки:** Если ключ в `preferences` отсутствует (`None`), сервис **падает с явной ошибкой**, а не подставляет молча дефолт. Дефолты живут только в `defaults.py`, БД получает их при `init_defaults()` (`INSERT OR IGNORE` — существующие значения не перезаписываются).
 *   **EAV для измерений и опросов:** `measurement_types`/`measurement_components`/`measurement_sessions`/`measurement_values` и `questions`/`question_options`/`answers`. Компоненты типа — «атрибуты класса»; сеансы — «экземпляры»; значения — «значения атрибутов». Снимок (`answers.value`, `answers.option_description`) защищает историю от переименования варианта.
+
+## 8. Карта файлов
+
+Краткое описание каждого файла. Полное дерево проекта — `project_structure.md`.
+
+### Ядро и утилиты
+
+| Файл | Назначение |
+| --- | --- |
+| `app_config.py` | Класс `AppConfig` — пути к папкам, файлу БД, ассетам, миграциям |
+| `constants.py` | Enum: `MetricType`, `GoalType`, `ValueType`, `CalcMethod`, `AffectAxis` |
+| `database.py` | `Database` — подключение к SQLite, **атомарные** миграции по `PRAGMA user_version` (транзакция на миграцию, FK выключаются на время применения, автобэкапа нет) |
+| `datetime_utils.py` | Инициализация таймзоны (UTC+3), `get_now_iso`, `to_display`, `to_datetime`, `to_minute_iso` |
+| `defaults.py` | `DEFAULT_PREFERENCES` — все дефолтные настройки (сгруппированы по сущностям, с комментариями; мёртвых ключей не держим) |
+| `score_calculator.py` | `ScoreCalculator` — перевод факта и цели в оценку 0–100 по `GoalType` |
+| `ui_utils.py` | `format_period_label`, `MONTHS_RU`, `sort_sheet_data` — UI-текст и сортировка |
+
+### Репозитории
+
+| Файл | Сущность |
+|---|---|
+| `activities_repo.py` | `activities` (автозаполнение `created_at`, обнуление секунд, длительности nullable) |
+| `activity_types_repo.py` | `activity_types` |
+| `chart_repo.py` | Легаси `role_metrics`/`sub_role_metrics` + `metric_values` по периодам (с `metric_id`) |
+| `indicator_repo.py` | `indicators` + `indicator_values` (с `affects`, `question_id`; score не хранится) |
+| `measurements_repo.py` | `units`, `measurement_types`, `measurement_components`, `measurement_sessions`, `measurement_values` |
+| `metrics_repo.py` | `metrics` + `metric_values` (сам пишет `created_at`/`updated_at` — триггеров нет) |
+| `period_repo.py` | `periods` (создание, границы, `get_available_periods`) |
+| `preferences_repo.py` | `preferences` (key-value JSON) |
+| `questions_repo.py` | `questions`, `question_options`, `answers` |
+| `regular_duties_repo.py` | `regular_duties` |
+| `regular_duty_marks_repo.py` | `regular_duty_marks` |
+| `roles_repo.py` | `roles` |
+| `sub_roles_repo.py` | `sub_roles` |
+| `web_time_events_repo.py` | `web_time_events` |
+
+### Сервисы
+
+| Файл | Назначение |
+|---|---|
+| `base_exchange_service.py` | Базовый класс импорта/экспорта, валидация FK, priority-словарь таблиц (уровни: `regular_duties`=4, `activities`/`indicators`/`regular_duty_marks`=5, `answers`/`indicator_values`/`metric_values`=6) |
+| `excel_service.py` | Импорт/экспорт `.xlsx` (openpyxl) |
+| `json_service.py` | Импорт/экспорт `.json` |
+| `indicator_calculator.py` | Движок: `calc_duration`, `calc_start_time`, `calc_count`, `calc_duty_done`, `calc_duty_mark`, `calc_question_last` |
+| `indicator_service.py` | Оркестратор: `recalculate_for_date` (day/week/month), валидация, `_calculate_period` (раздельно по осям; вес 0 остаётся нулём; метрика без индикаторов получает 0/0) |
+| `web_sync.py` | `sync()`: fetch → INSERT OR IGNORE → DELETE на сервере |
+| `web_events_service.py` | `add_sleep_from_web_events()`: предпроверка «все события типа в окне», дедупликация (sleep=последнее, wake=первое), создание активности, подробные ошибки |
+
+### UI
+
+| Файл | Что |
+|---|---|
+| `app_ui.py` | Главное окно, собирает верхние вкладки, `on_exit` сохраняет состояние |
+| `main_tab.py` | «Главная» — заглушка со слоганом + кнопка «Выход» |
+| `role_model_tab.py` | Контейнер «Ролевая модель» (Роли, Под-роли, Индикаторы, График метрик, График по периодам) |
+| `role_tree_container.py` | Контейнер верхней «Дерево ролей» (Дерево ролей, Метрики, Связи ролей) |
+| `roles_excel_tab.py` | Таблица «Роли» |
+| `sub_roles_tab.py` | «Под-роли» — Master-Detail |
+| `tree_tab.py` | «Дерево ролей» (с корнем «📁 Все роли», `roles_tree_state`) |
+| `metrics_config_tab.py` | «Метрики» — Master-Detail (роль → метрики), `roles_tree_state` |
+| `indicator_config_tab.py` | «Индикаторы» — тип / обязанность / вопрос + `affects` |
+| `chart_tab.py` | «График метрик» (легаси) |
+| `chart_metrics_tab.py` | «График по периодам» (на `metric_values`), диалог «Метрика: {name}» с двумя таблицами индикаторов по осям |
+| `activities_tab.py` | Контейнер «Активности» (Ручная работа, Типы, Обязанности, Выполнение) |
+| `manual_activities_tab.py` | «Ручная работа» (16 колонок; пикер даты-времени с независимыми датами; длительности — только введённое, пустое → NULL) |
+| `activity_types_tab.py` | «Типы активностей» |
+| `regular_duties_tab.py` | «Обязанности» (9 колонок) |
+| `regular_duty_marks_tab.py` | «Выполнение обязанностей» (двойной клик по активности — диалог редактирования; NULL-длительность показывается пустой) |
+| `role_links_tab.py` | «Связи ролей» (3 панели, 3 layout-режима, предзаполнение типа) |
+| `measurements_tab.py` | Контейнер «Измерения» (Ввод измерения, История, Настройки) |
+| `measurements_input_tab.py` | «Ввод измерения» — динамическая форма по компонентам типа |
+| `measurements_history_tab.py` | «История» измерений (read-only таблица, ширины и сортировка сохраняются) |
+| `measurements_settings_tab.py` | «Настройки» — типы/компоненты + единицы; сохраняются ширины трёх таблиц и разделитель |
+| `questionnaires_tab.py` | Контейнер «Опросы» (Отмечание, История, Настройка) |
+| `questionnaires_mark_tab.py` | «Отмечание» — дерево + форма с radio-кнопками; сохраняется разделитель |
+| `questionnaires_history_tab.py` | «История» ответов (фильтры по периоду/вопросу; сохраняются ширины, разделитель, период, дата, вопрос) |
+| `questionnaires_settings_tab.py` | «Настройка» — дерево ролей + вопросы (сверху) и варианты ответа (снизу); сохраняются ширины обеих таблиц и оба разделителя |
+| `data_exchange_tab.py` | «Обмен данными» |
+| `tools_tab.py` | Контейнер «Инструменты» |
+| `tools_debt_tab.py` | «Техдолг» — читает `roadmap.md` |
+| `tools_debug_tab.py` | «Служебные операции» — пересчёт индикаторов + корректировка периодов |
+| `tools_web_events_tab.py` | «Web-события» — настройки, синхронизация, «Пометить все как обработанные», создание сна |
+
+### Веб-часть (`z/`)
+
+Законсервирована. Статус, деплой и секреты — `project_passport.md` (раздел «Внешние сервисы»). Структура повторяет сервер (`https://slqa.ru/z/`).
+
+| Файл | Назначение |
+|---|---|
+| `z/index.html` | Страница с кнопками «Подъём» / «Отбой» для телефона |
+| `z/api/.htaccess` | Роутинг всех запросов в `index.php` + CORS |
+| `z/api/index.php` | Front controller: `POST /install`, `POST/GET /events/`, `DELETE /events/{id}` |
+| `z/api/db.php` | `get_pdo()`, `check_api_key()`, `ensure_schema()` |
+| `z/api/env_loader.php` | Парсер `.env` (без composer) |
+| `z/config/.htaccess` | `Require all denied` |
+| `z/config/.env.example` | Шаблон с `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `API_KEY` |
+| `z/config/.gitignore` | Игнорирует `.env` |
+| `z/config/README.md` | Инструкция по деплою |
+| `z/tests/gals.postman_collection.json` | Postman-коллекция: 10 запросов с проверками (авторизация, защита `.env`, CRUD событий, негативные кейсы) |
